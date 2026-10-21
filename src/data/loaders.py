@@ -68,10 +68,208 @@ def parse_subject_requirements(value):
     return requirements
 
 
-def load_timetable_csv(file):
+def preprocess_timetable_dataframe(df):
+    """Remove exact duplicate rows and report the change."""
+    df = df.copy()
+
+    report = {
+        "duplicate_rows_removed": 0,
+    }
+
+    # Identify duplicate rows, keeping the first occurrence.
+    duplicate_mask = df.duplicated(keep="first")
+
+    # Count duplicates before removing them.
+    report["duplicate_rows_removed"] = int(duplicate_mask.sum())
+
+    # Remove exact duplicates.
+    df = df.drop_duplicates(keep="first")
+
+    return df, report
+
+
+def preprocess_timetable_dataframe(df):
+    """Remove exact duplicate rows and normalize text values."""
+    df = df.copy()
+
+    report = {
+        "duplicate_rows_removed": 0,
+        "text_cells_trimmed": 0,
+        "category_values_normalized": 0,
+    }
+
+    # 1. Remove exact duplicate rows
+    duplicate_mask = df.duplicated(keep="first")
+    report["duplicate_rows_removed"] = int(duplicate_mask.sum())
+    df = df.drop_duplicates(keep="first")
+
+    # 2. Remove leading and trailing whitespace from text
+    for column in df.columns:
+        if column not in df.columns:
+            continue
+
+        for index in df.index:
+            value = df.at[index, column]
+
+            if isinstance(value, str):
+                cleaned_value = value.strip()
+
+                if cleaned_value != value:
+                    report["text_cells_trimmed"] += 1
+
+                df.at[index, column] = cleaned_value
+
+    # 3. Standardize known categorical fields
+    category_columns = {
+        "record_type",
+        "subject_type",
+        "room_type",
+    }
+
+    for column in category_columns.intersection(df.columns):
+        for index in df.index:
+            value = df.at[index, column]
+
+            if isinstance(value, str):
+                normalized_value = value.lower()
+
+                if normalized_value != value:
+                    report["category_values_normalized"] += 1
+
+                df.at[index, column] = normalized_value
+
+    return df, report
+
+
+def normalize_list_field(value, field_name):
+    """Normalize spacing in semicolon-separated CSV fields."""
+    if not isinstance(value, str) or not value.strip():
+        return value
+
+    items = value.split(";")
+    normalized_items = []
+
+    for item in items:
+        item = item.strip()
+
+        if not item:
+            continue
+
+        # Subject requirements look like MAT101:3:2
+        if field_name == "subject_ids":
+            parts = [part.strip() for part in item.split(":")]
+            item = ":".join(parts)
+
+        normalized_items.append(item)
+
+    return ";".join(normalized_items)
+
+
+def normalize_list_like_fields(df, report):
+    """Normalize list-like CSV fields."""
+    list_columns = {
+        "subjects_can_teach",
+        "unavailable_slots",
+        "working_days",
+        "break_periods",
+        "lunch_break_slot",
+        "subject_ids",
+    }
+
+    report["list_fields_normalized"] = 0
+
+    for column in list_columns.intersection(df.columns):
+        for index in df.index:
+            value = df.at[index, column]
+            normalized_value = normalize_list_field(value, column)
+
+            if normalized_value != value:
+                report["list_fields_normalized"] += 1
+
+            df.at[index, column] = normalized_value
+
+    return df
+
+
+def preprocess_timetable_dataframe(df):
+    """Remove exact duplicates and normalize text and empty values."""
+    df = df.copy()
+
+    
+    rows_before = len(df)
+
+    report = {
+        "rows_before": rows_before,
+        "rows_after": 0,
+        "duplicate_rows_removed": 0,
+        "text_cells_trimmed": 0,
+        "category_values_normalized": 0,
+        "empty_cells_normalized": 0,
+        "list_fields_normalized": 0,
+    }
+
+
+    # 1. Remove exact duplicate rows
+    duplicate_mask = df.duplicated(keep="first")
+    report["duplicate_rows_removed"] = int(duplicate_mask.sum())
+    df = df.drop_duplicates(keep="first")
+
+    # 2. Normalize text and empty values
+    for column in df.columns:
+        for index in df.index:
+            value = df.at[index, column]
+
+            # Convert missing values such as None or NaN to ""
+            if pd.isna(value):
+                df.at[index, column] = ""
+                report["empty_cells_normalized"] += 1
+                continue
+
+            if isinstance(value, str):
+                cleaned_value = value.strip()
+
+                if cleaned_value != value:
+                    report["text_cells_trimmed"] += 1
+
+                # Convert whitespace-only strings to ""
+                if cleaned_value == "" and value != "":
+                    report["empty_cells_normalized"] += 1
+
+                df.at[index, column] = cleaned_value
+
+    # 3. Normalize known categorical fields
+    category_columns = {
+        "record_type",
+        "subject_type",
+        "room_type",
+    }
+
+    for column in category_columns.intersection(df.columns):
+        for index in df.index:
+            value = df.at[index, column]
+
+            if isinstance(value, str):
+                normalized_value = value.lower()
+
+                if normalized_value != value:
+                    report["category_values_normalized"] += 1
+
+                df.at[index, column] = normalized_value
+
+    # 4. Normalize list-like CSV fields
+    df = normalize_list_like_fields(df, report)
+
+    
+    report["rows_after"] = len(df)
+
+    return df, report
+
+def load_timetable_csv(file,return_report=False):
     """Convert a single CSV into a SchedulingProblem."""
 
-    df = pd.read_csv(file, dtype=str).fillna("")
+    df = pd.read_csv(file, dtype=str)
+
+    df, preprocessing_report = preprocess_timetable_dataframe(df)
 
     required_columns = {
         "record_type",
@@ -85,12 +283,6 @@ def load_timetable_csv(file):
         raise ValueError(
             f"Missing required columns: {sorted(missing)}"
         )
-
-    df["record_type"] = (
-        df["record_type"].str.strip().str.lower()
-    )
-    df["id"] = df["id"].str.strip()
-    df["name"] = df["name"].str.strip()
 
     subjects = []
     teachers = []
@@ -197,10 +389,15 @@ def load_timetable_csv(file):
     if time_structure is None:
         raise ValueError("CSV must contain a settings record.")
 
-    return SchedulingProblem(
-        subjects=subjects,
-        teachers=teachers,
-        student_groups=groups,
-        rooms=rooms,
-        time_structure=time_structure,
+    problem = SchedulingProblem(
+    subjects=subjects,
+    teachers=teachers,
+    student_groups=groups,
+    rooms=rooms,
+    time_structure=time_structure,
     )
+
+    if return_report:
+       return problem, preprocessing_report
+    
+    return problem 
