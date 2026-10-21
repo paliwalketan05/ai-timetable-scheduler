@@ -183,3 +183,63 @@ def test_h6_detects_teacher_availability_violation():
     violations = validate_timetable(timetable, problem)
 
     assert any("Teacher availability violation" in v for v in violations)
+
+
+def test_rejects_period_outside_working_day():
+    problem = make_problem()
+    timetable = Timetable([
+        make_session("S1", "Monday", 7),
+        make_session("S2", "Tuesday", 1),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Invalid time slot" in v for v in violations)
+
+
+def test_rejects_session_during_general_break():
+    problem = make_problem()
+    problem.time_structure.break_periods = [3]
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 3),
+        make_session("S2", "Tuesday", 1),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Break period violation" in v for v in violations)
+
+
+def test_rejects_invalid_working_day():
+    problem = make_problem()
+    timetable = Timetable([
+        make_session("S1", "Saturday", 1),
+        make_session("S2", "Tuesday", 1),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Invalid working day" in v for v in violations)
+
+
+def test_rejects_assignment_session_id_mismatch():
+    problem = make_problem()
+
+    session = make_session("S1", "Monday", 1)
+    session.assignment = Assignment(
+        session_id="DIFFERENT_ID",
+        teacher_id="T1",
+        day="Monday",
+        start_period=1,
+        room_id="R1",
+    )
+
+    timetable = Timetable([
+        session,
+        make_session("S2", "Tuesday", 1),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Assignment session ID mismatch" in v for v in violations)

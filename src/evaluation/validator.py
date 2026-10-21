@@ -111,12 +111,48 @@ def _check_assignment_compatibility(session, problem):
 
     return violations
 
+def _check_timetable_integrity(timetable, problem):
+    violations = []
+    settings = problem.time_structure
+    valid_days = set(settings.working_days)
+
+    for session in timetable.sessions:
+        assignment = session.assignment
+        start = assignment.start_period
+        end = start + session.duration_slots - 1
+
+        if assignment.day not in valid_days:
+            violations.append(
+                f"Invalid working day: {session.session_id}"
+            )
+
+        if start < 1 or end > settings.periods_per_day:
+            violations.append(
+                f"Invalid time slot: {session.session_id}"
+            )
+
+        occupied_periods = set(range(start, end + 1))
+
+        if occupied_periods.intersection(settings.break_periods):
+            violations.append(
+                f"Break period violation: {session.session_id}"
+            )
+
+        if session.session_id != assignment.session_id:
+            violations.append(
+                f"Assignment session ID mismatch: {session.session_id}"
+            )
+
+    return violations
+
+
 def validate_timetable(
     timetable: Timetable,
     problem: SchedulingProblem,
 ) -> list[str]:
     violations = []
     violations.extend(_check_scheduling_conflicts(timetable))
+    violations.extend(_check_timetable_integrity(timetable, problem))
     for session in timetable.sessions:
         violations.extend(
             _check_assignment_compatibility(session, problem)
