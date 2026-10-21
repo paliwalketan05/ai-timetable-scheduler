@@ -82,3 +82,12 @@ def test_expand_sessions_preserves_group_and_subject_ids():
         "MAT101",
         "CHEM101",
     }
+
+def test_session_ids_are_unique_strings():
+    problem = make_problem()
+    sessions = expand_sessions(problem)
+
+    session_ids = [session.id for session in sessions]
+
+    assert all(isinstance(session_id, str) for session_id in session_ids)
+    assert len(session_ids) == len(set(session_ids))
