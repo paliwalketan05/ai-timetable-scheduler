@@ -11,7 +11,7 @@ from src.csp.sessions import expand_sessions
 from src.evaluation.metrics import calculate_soft_penalty
 from src.evaluation.validator import validate_timetable
 from src.models.entities import SchedulingProblem
-from src.models.schedule import ScheduledSession, Timetable
+from src.models.schedule import Assignment, ScheduledSession, Timetable
 from src.solvers.heuristics import make_scheduled_session
 
 
@@ -41,6 +41,7 @@ def solve_with_stats(
     min_temperature: float = 0.01,
     max_restarts: int = 3,
     seed: int | None = None,
+    initial_timetable: Timetable | None = None,
 ) -> AnnealingResult:
     """Search for a valid timetable with progressively cooler moves."""
     if max_steps < 1:
@@ -73,10 +74,46 @@ def solve_with_stats(
         if restart > 0:
             stats.restarts += 1
 
-        current_sessions = [
-            make_scheduled_session(session, rng.choice(domains[session.id]))
-            for session in sessions
-        ]
+        if restart == 0 and initial_timetable is not None:
+            if validate_timetable(initial_timetable, problem):
+                raise ValueError("initial_timetable must be valid")
+
+            supplied = {
+                item.session_id: item.assignment
+                for item in initial_timetable.sessions
+            }
+
+            if set(supplied) != {session.id for session in sessions}:
+                raise ValueError(
+                    "initial_timetable must contain every required session"
+                )
+
+            domain_lookup = {
+                session.id: set(domains[session.id])
+                for session in sessions
+            }
+
+            if any(
+                supplied[session.id] not in domain_lookup[session.id]
+                for session in sessions
+            ):
+                raise ValueError(
+                    "initial_timetable contains an assignment outside its domain"
+                )
+
+            current_sessions = [
+                make_scheduled_session(session, supplied[session.id])
+                for session in sessions
+            ]
+        else:
+            current_sessions = [
+                make_scheduled_session(
+                    session,
+                    rng.choice(domains[session.id]),
+                )
+                for session in sessions
+            ]
+
         current = Timetable(sessions=current_sessions)
         temperature = initial_temperature
 

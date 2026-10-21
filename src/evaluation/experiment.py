@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from typing import Callable
-
+from src.solvers.hybrid import solve_with_stats as hybrid_solve
 from src.evaluation.runner import SolverResult, evaluate_solver
 from src.models.entities import SchedulingProblem
 from src.models.schedule import Timetable
@@ -69,6 +69,7 @@ class SolverSummary:
         )
 
 
+
 def _run_with_statistics(
     solver_name: str,
     seed: int | None = None,
@@ -89,7 +90,9 @@ def _run_with_statistics(
             })
             return outcome.timetable
 
-    elif solver_name == "min_conflicts":
+        return run, lambda: dict(statistics)
+
+    if solver_name == "min_conflicts":
         def run(problem: SchedulingProblem) -> Timetable | None:
             outcome = min_conflicts_solve(problem, seed=seed)
             statistics.clear()
@@ -100,7 +103,9 @@ def _run_with_statistics(
             })
             return outcome.timetable
 
-    elif solver_name == "simulated_annealing":
+        return run, lambda: dict(statistics)
+
+    if solver_name == "simulated_annealing":
         def run(problem: SchedulingProblem) -> Timetable | None:
             outcome = annealing_solve(problem, seed=seed)
             statistics.clear()
@@ -112,10 +117,24 @@ def _run_with_statistics(
             })
             return outcome.timetable
 
-    else:
-        raise ValueError(f"Unknown solver: {solver_name}")
+        return run, lambda: dict(statistics)
 
-    return run, lambda: dict(statistics)
+    if solver_name == "hybrid":
+        def run(problem: SchedulingProblem) -> Timetable | None:
+            outcome = hybrid_solve(problem, seed=seed)
+            statistics.clear()
+            statistics.update({
+                "backtracking_nodes": outcome.stats.backtracking_nodes,
+                "backtracking_backtracks": outcome.stats.backtracking_backtracks,
+                "annealing_iterations": outcome.stats.annealing_iterations,
+                "annealing_accepted_moves": outcome.stats.annealing_accepted_moves,
+            })
+            return outcome.timetable
+
+        return run, lambda: dict(statistics)
+
+    raise ValueError(f"Unknown solver: {solver_name}")
+
 
 
 def run_experiment(
@@ -138,6 +157,7 @@ def run_experiment(
         "heuristic_backtracking",
         "min_conflicts",
         "simulated_annealing",
+        "hybrid",
     ]
     selected = solver_names or available
 

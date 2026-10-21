@@ -95,3 +95,18 @@ def test_randomized_solver_experiment_accepts_seed():
         "iterations" in run.statistics
         for run in summary.runs
     )
+def test_experiment_runs_hybrid_solver():
+    summaries = run_experiment(
+        make_problem(),
+        solver_names=["hybrid"],
+        repetitions=1,
+        seed=42,
+    )
+
+    summary = summaries["hybrid"]
+
+    assert len(summary.runs) == 1
+    assert summary.success_count == 1
+    assert summary.success_rate == 1.0
+    assert "backtracking_nodes" in summary.runs[0].statistics
+    assert "annealing_iterations" in summary.runs[0].statistics
