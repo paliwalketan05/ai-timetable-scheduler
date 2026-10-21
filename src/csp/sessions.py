@@ -21,7 +21,7 @@ def expand_sessions(
             for session_number in range(
                 1, requirement.weekly_sessions + 1
             ):
-                session= SchedulingSession(
+                session = SchedulingSession(
                     id=f"{group.id}_{requirement.subject_id}_S{session_number}",
                     group_id=group.id,
                     subject_id=requirement.subject_id,
