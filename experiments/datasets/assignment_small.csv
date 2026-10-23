@@ -1,0 +1,18 @@
+record_type,id,name,subject_type,subjects_can_teach,unavailable_slots,maximum_weekly_load,strength,subject_ids,lunch_break_slot,capacity,room_type,working_days,periods_per_day,break_periods,period_duration_minutes
+subject,MAT101,Mathematics,theory,,,,,,,,,,,,
+subject,PHY101,Physics,theory,,,,,,,,,,,,
+subject,CHEM101,Chemistry Laboratory,lab,,,,,,,,,,,,
+teacher,T01,Mathematics Teacher 1,,MAT101,,20,,,,,,,,,
+teacher,T02,Mathematics Teacher 2,,MAT101,,20,,,,,,,,,
+teacher,T03,Physics Teacher 3,,PHY101,,20,,,,,,,,,
+teacher,T04,Physics Teacher 4,,PHY101,,20,,,,,,,,,
+teacher,T05,Chemistry Teacher 5,,CHEM101,,20,,,,,,,,,
+teacher,T06,Chemistry Teacher 6,,CHEM101,,20,,,,,,,,,
+class,C01,Class 01,,,,,29,MAT101:2;PHY101:2;CHEM101:1:2,P4,,,,,,
+class,C02,Class 02,,,,,30,MAT101:2;PHY101:2;CHEM101:1:2,P4,,,,,,
+class,C03,Class 03,,,,,31,MAT101:2;PHY101:2;CHEM101:1:2,P4,,,,,,
+room,R01,Classroom 01,,,,,,,,50,classroom,,,,
+room,R02,Classroom 02,,,,,,,,50,classroom,,,,
+room,R03,Classroom 03,,,,,,,,50,classroom,,,,
+room,LAB01,Laboratory 01,,,,,,,,50,lab,,,,
+settings,CFG01,Default Settings,,,,,,,,,,Monday;Tuesday;Wednesday;Thursday;Friday,6,P3,50

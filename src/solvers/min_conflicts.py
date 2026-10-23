@@ -1,7 +1,7 @@
 
 """Min-Conflicts solver with random restarts and plateau escape."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import random
 
 from src.csp.constraints import (
@@ -22,6 +22,7 @@ class MinConflictsStats:
     iterations: int = 0
     restarts: int = 0
     plateau_escapes: int = 0
+    cost_history: list[dict[str, int]] = field(default_factory=list)
 
 
 @dataclass
@@ -283,6 +284,15 @@ def solve_with_stats(
 
                 best_score = _total_conflicts(current, problem)
                 plateau_steps = 0
+
+            current_score = _total_conflicts(current, problem)
+
+            stats.cost_history.append({
+                "iteration": stats.iterations,
+                "restart": restart,
+                "conflict_cost": current_score,
+                "best_conflict_cost": best_score,
+            })
 
     return MinConflictsResult(None, stats)
 

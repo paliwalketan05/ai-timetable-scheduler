@@ -1,0 +1,11 @@
+dataset,iteration,restart,conflict_cost,best_conflict_cost
+assignment_small,1,0,5,5
+assignment_small,2,0,4,4
+assignment_small,3,0,1,1
+assignment_small,4,0,0,0
+assignment_large,1,0,6,6
+assignment_large,2,0,4,4
+assignment_large,3,0,3,3
+assignment_large,4,0,2,2
+assignment_large,5,0,1,1
+assignment_large,6,0,0,0

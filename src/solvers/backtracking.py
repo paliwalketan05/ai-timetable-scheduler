@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from src.csp.sessions import expand_sessions
 from src.csp.domains import generate_domains
 from src.evaluation.validator import validate_timetable
@@ -83,18 +84,29 @@ def _exceeds_teacher_workload(
 
     return proposed_load > teacher.maximum_weekly_load
 
+@dataclass
+class BacktrackingStats:
+    nodes_explored: int = 0
+    backtracks: int = 0
+
+
+@dataclass
+class BacktrackingResult:
+    timetable: Timetable | None
+    stats: BacktrackingStats
 
 def _backtrack(
     sessions: list[SchedulingSession],
     domains: dict[str, list[Assignment]],
     problem: SchedulingProblem,
     scheduled: list[ScheduledSession],
+    stats:BacktrackingStats,
 ) -> list[ScheduledSession] | None:
     if len(scheduled) == len(sessions):
         return scheduled.copy()
 
     scheduled_ids = {session.session_id for session in scheduled}
-
+    stats.nodes_explored += 1
     session = next(
         session for session in sessions
         if session.id not in scheduled_ids
@@ -108,38 +120,52 @@ def _backtrack(
 
         scheduled.append(candidate)
 
-        result = _backtrack(sessions, domains, problem, scheduled)
+        result = _backtrack(
+            sessions=sessions,
+            domains=domains,
+            problem=problem,
+            scheduled=scheduled,
+            stats=stats,
+        )
 
         if result is not None:
             return result
 
+        stats.backtracks += 1
         scheduled.pop()
 
     return None
 
 
-def solve(problem: SchedulingProblem) -> Timetable | None:
+def solve_with_stats(problem: SchedulingProblem) -> BacktrackingResult:
+    """Solve the problem and return search statistics."""
+    stats = BacktrackingStats()
     sessions = expand_sessions(problem)
     domains = generate_domains(problem, sessions)
 
     if any(not domain for domain in domains.values()):
-        return None
+        return BacktrackingResult(None, stats)
 
     solution = _backtrack(
         sessions=sessions,
         domains=domains,
         problem=problem,
         scheduled=[],
+        stats=stats,
     )
 
     if solution is None:
-        return None
+        return BacktrackingResult(None, stats)
 
     timetable = Timetable(sessions=solution)
-
     violations = validate_timetable(timetable, problem)
 
     if violations:
-        return None
+        return BacktrackingResult(None, stats)
 
-    return timetable
+    return BacktrackingResult(timetable, stats)
+
+
+def solve(problem: SchedulingProblem) -> Timetable | None:
+    """Return only the timetable for compatibility with existing callers."""
+    return solve_with_stats(problem).timetable
