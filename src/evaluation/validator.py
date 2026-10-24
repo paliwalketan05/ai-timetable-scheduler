@@ -251,13 +251,13 @@ def validate_timetable(
                     f"Weekly hours violation: "
                     f"{group.id}, {requirement.subject_id}"
                 )
-        for session in scheduled:
-            if session.duration_slots != requirement.duration_slots:
-                violations.append(
-                    f"Session duration violation: {session.session_id}, "
-                    f"expected {requirement.duration_slots}, "
-                    f"got {session.duration_slots}"
-                )
+            for session in scheduled:
+                if session.duration_slots != requirement.duration_slots:
+                    violations.append(
+                        f"Session duration violation: {session.session_id}, "
+                        f"expected {requirement.duration_slots}, "
+                        f"got {session.duration_slots}"
+                    )
 
     for teacher in problem.teachers:
         if teacher_load[teacher.id] > teacher.maximum_weekly_load:

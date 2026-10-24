@@ -359,3 +359,40 @@ def test_h7_detects_individual_session_duration_mismatch():
     violations = validate_timetable(timetable, problem)
 
     assert any("Session duration violation" in v for v in violations)
+
+def test_checks_duration_for_every_subject_requirement():
+    problem = make_problem()
+    problem.subjects.append(Subject("PHY", "Physics"))
+
+    problem.student_groups[0].subject_requirements.append(
+        SubjectRequirement("PHY", 1, 1)
+    )
+
+    problem.teachers.append(
+        Teacher("T2", "Teacher Two", ["PHY"], maximum_weekly_load=2)
+    )
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 1, duration=2),
+        make_session("S2", "Tuesday", 1),
+        ScheduledSession(
+            session_id="S3",
+            group_id="G1",
+            subject_id="PHY",
+            duration_slots=1,
+            assignment=Assignment(
+                session_id="S3",
+                teacher_id="T2",
+                day="Tuesday",
+                start_period=3,
+                room_id="R1",
+            ),
+        ),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any(
+        "Session duration violation: S1" in violation
+        for violation in violations
+    )
