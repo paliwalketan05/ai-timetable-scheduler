@@ -1,3 +1,4 @@
+import pytest
 from src.evaluation.validator import validate_timetable
 from src.models.entities import (
     SchedulingProblem,
@@ -274,8 +275,7 @@ def test_h7_detects_unrequested_subject_session():
     violations = validate_timetable(timetable, problem)
 
     assert any(
-        "Weekly session count violation" in violation
-        or "Unrequested subject session" in violation
+        "Unrequested subject session" in violation
         for violation in violations
     )
 
@@ -333,10 +333,6 @@ def test_detects_overlap_between_multi_period_sessions():
     assert any("Teacher conflict" in v for v in violations)
     assert any("Student group conflict" in v for v in violations)
     assert any("Room conflict" in v for v in violations)
-
-
-import pytest
-
 
 @pytest.mark.parametrize("duration", [0, -1])
 def test_rejects_nonpositive_session_duration(duration):
