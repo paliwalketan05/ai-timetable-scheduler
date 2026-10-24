@@ -1,3 +1,4 @@
+import pytest
 from src.evaluation.validator import validate_timetable
 from src.models.entities import (
     SchedulingProblem,
@@ -243,3 +244,155 @@ def test_rejects_assignment_session_id_mismatch():
     violations = validate_timetable(timetable, problem)
 
     assert any("Assignment session ID mismatch" in v for v in violations)
+
+
+def test_h7_detects_unrequested_subject_session():
+    problem = make_problem()
+    problem.subjects.append(Subject("PHY", "Physics"))
+    problem.teachers.append(
+        Teacher("T2","Teacher Two",["PHY"],maximum_weekly_load=2)
+    )
+    extra_session = ScheduledSession(
+        session_id="S3",
+        group_id="G1",
+        subject_id="PHY",
+        duration_slots=1,
+        assignment=Assignment(
+            session_id="S3",
+            teacher_id="T2",
+            day="Monday",
+            start_period=3,
+            room_id="R1",
+        ),
+    )
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 1),
+        make_session("S2", "Tuesday", 1),
+        extra_session,
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any(
+        "Unrequested subject session" in violation
+        for violation in violations
+    )
+
+
+def test_rejects_teacher_not_qualified_for_subject():
+    problem = make_problem()
+    problem.subjects.append(Subject("PHY", "Physics"))
+    problem.teachers.append(
+        Teacher(
+            "T2",
+            "Teacher Two",
+            ["MATH"],
+            maximum_weekly_load=2,
+        )
+    )
+
+    physics_session = ScheduledSession(
+        session_id="S3",
+        group_id="G1",
+        subject_id="PHY",
+        duration_slots=1,
+        assignment=Assignment(
+            session_id="S3",
+            teacher_id="T2",
+            day="Monday",
+            start_period=3,
+            room_id="R1",
+        ),
+    )
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 1),
+        make_session("S2", "Tuesday", 1),
+        physics_session,
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any(
+        "Teacher qualification violation" in violation
+        for violation in violations
+    )
+
+
+def test_detects_overlap_between_multi_period_sessions():
+    problem = make_problem()
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 2, duration=2),
+        make_session("S2", "Monday", 3, duration=1),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Teacher conflict" in v for v in violations)
+    assert any("Student group conflict" in v for v in violations)
+    assert any("Room conflict" in v for v in violations)
+
+@pytest.mark.parametrize("duration", [0, -1])
+def test_rejects_nonpositive_session_duration(duration):
+    problem = make_problem()
+    timetable = Timetable([
+        make_session("S1", "Monday", 1, duration=duration),
+        make_session("S2", "Tuesday", 1),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Invalid session duration" in v for v in violations)
+
+def test_h7_detects_individual_session_duration_mismatch():
+    problem = make_problem()
+    requirement = problem.student_groups[0].subject_requirements[0]
+    requirement.duration_slots = 2
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 1, duration=1),
+        make_session("S2", "Tuesday", 1, duration=3),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any("Session duration violation" in v for v in violations)
+
+def test_checks_duration_for_every_subject_requirement():
+    problem = make_problem()
+    problem.subjects.append(Subject("PHY", "Physics"))
+
+    problem.student_groups[0].subject_requirements.append(
+        SubjectRequirement("PHY", 1, 1)
+    )
+
+    problem.teachers.append(
+        Teacher("T2", "Teacher Two", ["PHY"], maximum_weekly_load=2)
+    )
+
+    timetable = Timetable([
+        make_session("S1", "Monday", 1, duration=2),
+        make_session("S2", "Tuesday", 1),
+        ScheduledSession(
+            session_id="S3",
+            group_id="G1",
+            subject_id="PHY",
+            duration_slots=1,
+            assignment=Assignment(
+                session_id="S3",
+                teacher_id="T2",
+                day="Tuesday",
+                start_period=3,
+                room_id="R1",
+            ),
+        ),
+    ])
+
+    violations = validate_timetable(timetable, problem)
+
+    assert any(
+        "Session duration violation: S1" in violation
+        for violation in violations
+    )
