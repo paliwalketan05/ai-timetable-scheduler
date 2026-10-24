@@ -96,6 +96,12 @@ def _check_assignment_compatibility(session, problem):
         if room.room_type.strip().lower() != required_type:
             violations.append(f"Room type violation: {session.session_id}")
 
+    if teacher is not None and subject is not None:
+        if session.subject_id not in teacher.subjects_can_teach:
+            violations.append(
+                f"Teacher qualification violation: {session.session_id}"
+            )
+
     if teacher is not None:
         unavailable = set(teacher.unavailable_slots)
         for period in range(
@@ -118,6 +124,13 @@ def _check_timetable_integrity(timetable, problem):
 
     for session in timetable.sessions:
         assignment = session.assignment
+
+        if session.duration_slots <= 0:
+            violations.append(
+                f"Invalid session duration: {session.session_id}"
+            )
+            continue
+
         start = assignment.start_period
         end = start + session.duration_slots - 1
 
@@ -194,6 +207,25 @@ def validate_timetable(
             violations.append(
                 f"Unknown teacher: {assignment.teacher_id}"
             )
+    # H7: Reject sessions that are not part of a declared requirement.
+    required_group_subjects = {
+        (group.id, requirement.subject_id)
+        for group in problem.student_groups
+        for requirement in group.subject_requirements
+    }
+
+    for session in timetable.sessions:
+        key = (session.group_id, session.subject_id)
+
+        if (
+            session.group_id in groups
+            and key not in required_group_subjects
+        ):
+            violations.append(
+                "Unrequested subject session: "
+                f"group {session.group_id} has no requirement "
+                f"for subject {session.subject_id}"
+            )
 
     for group in problem.student_groups:
         for requirement in group.subject_requirements:
@@ -218,6 +250,13 @@ def validate_timetable(
                 violations.append(
                     f"Weekly hours violation: "
                     f"{group.id}, {requirement.subject_id}"
+                )
+        for session in scheduled:
+            if session.duration_slots != requirement.duration_slots:
+                violations.append(
+                    f"Session duration violation: {session.session_id}, "
+                    f"expected {requirement.duration_slots}, "
+                    f"got {session.duration_slots}"
                 )
 
     for teacher in problem.teachers:
