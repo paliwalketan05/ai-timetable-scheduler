@@ -1,0 +1,6 @@
+﻿record_type,id,name,subject_type,subjects_can_teach,unavailable_slots,maximum_weekly_load,strength,subject_ids,lunch_break_slot,capacity,room_type,working_days,periods_per_day,break_periods,period_duration_minutes
+subject,MAT101,Mathematics,theory,,,,,,,,,,,
+teacher,T01,Aman,,MAT101,,20,,,,,,,,
+class,C01,AI Batch A,,,,,40,MAT101:4,P4,,,,,,
+room,R01,Room 101,,,,,,,,60,classroom,,,,
+settings,S01,Default Settings,,,,,,,,,,Monday;Tuesday;Wednesday;Thursday;Friday,6,P4,50
