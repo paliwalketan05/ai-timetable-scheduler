@@ -94,10 +94,10 @@ def test_invalid_csv_handling():
 
 
 def test_check_algorithm_implementation_returns_bool():
-    """Verify solver availability inspector returns boolean without crashing on incomplete solvers."""
+    """Verify solver availability inspector returns a boolean for real solver modules."""
     res = check_algorithm_implementation("src.solvers.backtracking")
     assert isinstance(res, bool)
-    assert res is False  # Currently placeholder only
+    assert res is True
 
 
 def test_check_validator_module_returns_callable_or_none():

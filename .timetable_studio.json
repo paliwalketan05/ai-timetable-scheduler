@@ -1,0 +1,8 @@
+{
+  "algorithm": "Simulated Annealing",
+  "max_steps": 2000,
+  "seed": 42,
+  "timetable_view": "All Classes",
+  "show_teacher": true,
+  "show_room": true
+}
